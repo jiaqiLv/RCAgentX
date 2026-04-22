@@ -4,7 +4,15 @@ An intelligent operations (AIOps) multi-agent system built on LangChain and Lang
 This system provides automated incident detection, root cause analysis, remediation decision-making,
 and repair execution with human-in-the-loop support.
 
-## Architecture
+## ✨ Features
+
+- **Multi-Agent Orchestration** - 7 specialized agents coordinated by a Supervisor
+- **Training-Free GRPO** - Experience-based strategy optimization via RAG retrieval
+- **Human-in-the-Loop** - Dual-mode execution (automatic or manual approval)
+- **LLM Integration** - Support for OpenAI, DeepSeek, and other OpenAI-compatible APIs
+- **Interactive CLI** - Built-in chat application for natural language interaction
+
+## 🏗️ Architecture
 
 ```
                     ┌─────────────────┐
@@ -26,66 +34,206 @@ and repair execution with human-in-the-loop support.
             └───────────────┘            └───────────┘  └─────────┘
 ```
 
-## Core Components
+## 📦 Project Structure
 
-### Agents
+```
+RCAgentX/
+├── agents/                 # Multi-agent implementations
+│   ├── base.py            # Abstract base class for all agents
+│   ├── supervisor.py      # Global orchestration and workflow routing
+│   ├── observability.py   # Multi-modal data collection
+│   ├── detection.py       # Anomaly detection and classification
+│   ├── diagnosis.py       # Root cause analysis
+│   ├── decision.py        # Remediation strategy with GRPO
+│   ├── repair.py          # Dual-mode repair execution
+│   └── report.py          # Incident report generation
+├── tools/                  # LangChain tools
+│   ├── prometheus.py      # Prometheus metrics query
+│   ├── loki.py            # Loki log query
+│   ├── alert_manager.py   # AlertManager management
+│   ├── wechat.py          # Enterprise WeChat notifications
+│   └── tavily_search.py   # Tavily AI web search
+├── workflows/              # LangGraph workflow definitions
+│   ├── incident_closure.py    # Standard incident closure flow
+│   ├── auto_repair.py         # Automatic repair workflow
+│   └── manual_approval.py     # Human approval workflow
+├── memory/                 # State and knowledge management
+│   ├── shared_state.py    # Shared state container
+│   ├── knowledge_base.py  # GRPO experience storage (ChromaDB)
+│   └── vector_store.py    # Vector storage wrapper
+├── algorithms/             # Core algorithms
+│   └── __init__.py        # Algorithm exports
+├── config/                 # Configuration
+│   ├── settings.py        # Settings management
+│   └── prompts.py         # Prompt templates
+├── utils/                  # Utilities
+│   ├── logger.py          # Logging configuration
+│   ├── errors.py          # Custom exceptions
+│   └── schema.py          # Schema utilities
+├── integrations/           # External integrations
+│   └── __init__.py        # Integration exports
+├── app.py                  # Interactive CLI chat application
+├── main.py                 # Main entry point
+├── run.sh                  # Quick start script
+├── requirements.txt        # Python dependencies
+└── .env.example            # Environment variables template
+```
 
-| Agent | Responsibility |
-|-------|---------------|
-| **Supervisor** | Global orchestration and multi-agent coordination |
-| **Observability** | Multi-modal data collection (Metrics, Logs, Traces) |
-| **Detection** | Anomaly detection and classification |
-| **Diagnosis** | Root cause analysis with causal inference |
-| **Decision** | Remediation strategy with GRPO-based retrieval |
-| **Repair** | Dual-mode execution (auto/manual approval) |
-| **Report** | Incident report generation |
+## 🚀 Quick Start
 
-### Tools
-
-| Tool | Integration |
-|------|-------------|
-| `PrometheusTool` | Metrics query and analysis |
-| `LokiTool` | Log query and pattern detection |
-| `AlertManagerTool` | Alert management and silencing |
-| `WeChatTool` | Enterprise WeChat notifications |
-
-### Key Features
-
-1. **Multi-Agent Orchestration**: Supervisor-based dynamic workflow routing
-2. **Training-Free GRPO**: Experience-based strategy optimization via RAG retrieval
-3. **Human-in-the-Loop**: Support for both automatic and manual approval modes
-4. **Observable**: Full audit trail with logs and state tracking
-
-## Installation
+### 1. Installation
 
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd RCAgentX
 
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
 # Install dependencies
 pip install -r requirements.txt
-
-# Set environment variables
-export OPENAI_API_KEY="your-api-key"
-export PROMETHEUS_URL="http://prometheus:9090"
-export LOKI_URL="http://loki:3100"
-export WECHAT_WEBHOOK_URL="your-webhook-url"
 ```
 
-## Quick Start
+### 2. Configuration
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your settings
+vi .env
+```
+
+**Required settings:**
+```bash
+# LLM Configuration (DeepSeek example)
+OPENAI_API_KEY=sk-xxx
+OPENAI_API_BASE=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+
+# Monitoring (optional)
+PROMETHEUS_URL=http://localhost:9090
+LOKI_URL=http://localhost:3100
+```
+
+### 3. Run
+
+**Interactive Chat:**
+```bash
+./run.sh app
+# or
+python app.py
+```
+
+**Programmatic Usage:**
+```bash
+./run.sh --test-incident --dry-run
+```
+
+## 💬 Interactive CLI
+
+The built-in chat application (`app.py`) provides natural language interaction:
+
+```bash
+python app.py
+```
+
+**Available Commands:**
+| Command | Description |
+|---------|-------------|
+| `/help` | Show help message |
+| `/clear` | Clear conversation history |
+| `/history` | Show recent conversation |
+| `/status` | Show system status |
+| `/quit` | Exit application |
+
+**Example Questions:**
+- "What is AIOps?"
+- "How do I troubleshoot high CPU usage?"
+- "What are the best practices for alerting?"
+- "Explain root cause analysis"
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | LLM API key | - |
+| `OPENAI_API_BASE` | Custom API base URL | - |
+| `LLM_MODEL` | Model name | `deepseek-chat` |
+| `PROMETHEUS_URL` | Prometheus server URL | `http://localhost:9090` |
+| `LOKI_URL` | Loki server URL | `http://localhost:3100` |
+| `ALERTMANAGER_URL` | Alertmanager URL | `http://localhost:9093` |
+| `WECHAT_WEBHOOK_URL` | WeChat webhook URL | - |
+| `VERBOSE` | Enable verbose logging | `false` |
+| `DRY_RUN` | Dry-run mode (no actual changes) | `false` |
+
+### Supported LLM Providers
+
+| Provider | Base URL | Example Model |
+|----------|----------|---------------|
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
+| Azure OpenAI | Your Azure endpoint | `gpt-4` |
+| Local (Ollama) | `http://localhost:11434/v1` | `llama2` |
+
+## 📊 Workflow
+
+### Incident Processing Flow
+
+1. **Observability** → Collect metrics, logs, traces
+2. **Detection** → Identify anomalies using rules + ML
+3. **Diagnosis** → Root cause analysis with causal inference
+4. **Decision** → Generate remediation plan using GRPO retrieval
+5. **Repair** → Execute repair (auto or manual approval)
+6. **Report** → Generate incident report
+
+### Human-in-the-Loop
+
+Repairs require human approval when:
+- Risk level is MEDIUM or HIGH
+- Diagnosis confidence < threshold (default: 0.8)
+- Action involves rollback or destructive operations
+
+## 🧠 GRPO Knowledge Base
+
+Training-Free GRPO (Generalized Reward-based Policy Optimization) enables
+continuous improvement through experience retrieval:
 
 ```python
 from main import AIOpsSystem
-from config.settings import Settings
 
-# Initialize from environment
 aiops = AIOpsSystem.from_env()
 
-# Process an incident
+# Get knowledge base stats
+stats = aiops.get_knowledge_base_stats()
+print(f"Total experiences: {stats['total_records']}")
+print(f"Success rate: {stats['success_rate']:.1%}")
+
+# Query successful strategies
+strategies = aiops.knowledge_base.get_successful_strategies(
+    anomaly_type="cpu_spike",
+    k=3
+)
+```
+
+## 📚 API Reference
+
+### AIOpsSystem
+
+```python
+from main import AIOpsSystem
+
+# Initialize
+aiops = AIOpsSystem.from_env()
+
+# Process incident
 result = aiops.process_incident(
-    alert_labels={"service": "api-service", "severity": "critical"},
-    entities=["api-service-pod-1"]
+    alert_labels={"service": "api", "severity": "critical"},
+    entities=["api-pod-1"]
 )
 
 # Access results
@@ -94,112 +242,32 @@ print(f"Root Cause: {result['diagnosis'].root_causes}")
 print(f"Report: {result['report']['summary']}")
 ```
 
-## Configuration
+### Agents
 
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | - |
-| `OPENAI_API_BASE` | Custom API base URL | - |
-| `LLM_MODEL` | Model name | `gpt-4o` |
-| `PROMETHEUS_URL` | Prometheus server URL | `http://localhost:9090` |
-| `LOKI_URL` | Loki server URL | `http://localhost:3100` |
-| `ALERTMANAGER_URL` | Alertmanager URL | `http://localhost:9093` |
-| `WECHAT_WEBHOOK_URL` | WeChat webhook URL | - |
-| `VERBOSE` | Enable verbose logging | `false` |
-| `DRY_RUN` | Dry-run mode (no changes) | `false` |
-
-### Programmatic Configuration
+Each agent implements a standard interface:
 
 ```python
-from config.settings import Settings, LLMSettings, PrometheusSettings
+from agents.detection import DetectionAgent
+from memory.shared_state import ObservabilityData
 
-settings = Settings(
-    llm=LLMSettings(
-        model="gpt-4o",
-        temperature=0.0,
-    ),
-    prometheus=PrometheusSettings(
-        url="http://prometheus:9090",
-        timeout=30,
-    )
-)
-
-aiops = AIOpsSystem(settings)
+agent = DetectionAgent(llm=llm, verbose=True)
+result = agent.execute({"observability": obs_data})
 ```
 
-## Workflow
+## 🤝 Contributing
 
-### Incident Processing Flow
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests
+5. Submit a pull request
 
-1. **Observability**: Collect metrics from Prometheus, logs from Loki
-2. **Detection**: Analyze for anomalies using thresholds and patterns
-3. **Diagnosis**: Identify root cause with causal inference
-4. **Decision**: Generate remediation plan using GRPO retrieval
-5. **Repair**: Execute repair (auto or with approval)
-6. **Report**: Generate incident report
+## 📄 License
 
-### Human-in-the-Loop
+MIT License - see [LICENSE](LICENSE) for details.
 
-Repairs are automatically routed for human approval when:
-- Risk level is MEDIUM or HIGH
-- Diagnosis confidence is below threshold
-- Action involves rollback or destructive operations
+## 🔗 Links
 
-## GRPO Knowledge Base
-
-The system uses Training-Free GRPO for strategy optimization:
-
-```python
-# Access knowledge base
-kb = aiops.knowledge_base
-
-# Get statistics
-stats = kb.get_stats()
-print(f"Total experiences: {stats['total_records']}")
-print(f"Success rate: {stats['success_rate']:.1%}")
-
-# Query similar cases
-strategies = kb.get_successful_strategies("cpu_spike", k=3)
-```
-
-## Project Structure
-
-```
-RCAgentX/
-├── agents/                 # Agent implementations
-│   ├── base.py            # Base agent class
-│   ├── supervisor.py      # Orchestrator
-│   ├── observability.py   # Data collection
-│   ├── detection.py       # Anomaly detection
-│   ├── diagnosis.py       # Root cause analysis
-│   ├── decision.py        # Strategy decision
-│   ├── repair.py          # Repair execution
-│   └── report.py          # Report generation
-├── tools/                  # LangChain tools
-│   ├── prometheus.py      # Prometheus integration
-│   ├── loki.py            # Loki integration
-│   ├── alert_manager.py   # Alertmanager integration
-│   └── wechat.py          # WeChat integration
-├── workflows/              # Workflow definitions
-│   ├── incident_closure.py
-│   ├── auto_repair.py
-│   └── manual_approval.py
-├── memory/                 # State and knowledge
-│   ├── shared_state.py    # Shared state management
-│   ├── knowledge_base.py  # GRPO knowledge base
-│   └── vector_store.py    # Vector storage
-├── config/                 # Configuration
-│   ├── settings.py        # Settings management
-│   └── prompts.py         # Prompt templates
-├── utils/                  # Utilities
-│   ├── logger.py          # Logging setup
-│   ├── errors.py          # Custom exceptions
-│   └── schema.py          # Schema utilities
-└── main.py                 # Entry point
-```
-
-## License
-
-MIT License
+- [GitHub Repository](https://github.com/jiaqiLv/RCAgentX)
+- [LangChain Documentation](https://python.langchain.com/)
+- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
