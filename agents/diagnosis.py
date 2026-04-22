@@ -378,6 +378,7 @@ class DiagnosisAgent(BaseAgent):
 
         try:
             response = self.llm.invoke(prompt)
+            self.log_llm(prompt, response.content)
             # Parse LLM response (simplified - would need proper JSON parsing)
             return [{
                 "entity": "inferred_by_llm",

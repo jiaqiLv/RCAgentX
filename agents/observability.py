@@ -338,6 +338,7 @@ class ObservabilityAgent(BaseAgent):
         """
 
         response = self.llm.invoke(prompt)
+        self.log_llm(prompt, response.content)
         return response.content
 
     def _generate_basic_summary(self, obs_data: ObservabilityData) -> str:

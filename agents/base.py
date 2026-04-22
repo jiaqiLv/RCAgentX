@@ -11,6 +11,30 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel, ConfigDict
 
 
+# ANSI color codes for terminal output
+COLORS = {
+    "GREEN": "\033[92m",
+    "YELLOW": "\033[93m",
+    "BLUE": "\033[94m",
+    "CYAN": "\033[96m",
+    "RESET": "\033[0m",
+}
+
+
+def colorize(text: str, color: str) -> str:
+    """
+    Add ANSI color codes to text for terminal output.
+
+    Args:
+        text (str): The text to colorize
+        color (str): Color name from COLORS dict
+
+    Returns:
+        str: Colorized text with ANSI codes
+    """
+    return f"{COLORS.get(color, '')}{text}{COLORS['RESET']}"
+
+
 class BaseAgent(ABC, BaseModel):
     """
     Abstract base class for all AIOps agents.
@@ -130,3 +154,21 @@ class BaseAgent(ABC, BaseModel):
         """
         if self.verbose:
             print(f"[{self.name}] {message}")
+
+    def log_llm(self, prompt: str, response: str):
+        """
+        Log LLM interaction with colorized output.
+
+        Prints the prompt and response in green for easy visibility
+        of AI interactions.
+
+        Args:
+            prompt (str): The prompt sent to the LLM
+            response (str): The response from the LLM
+        """
+        if self.verbose:
+            print(colorize(f"\n[LLM] Prompt to {self.name}:", "CYAN"))
+            print(colorize(f"  {prompt[:500]}{'...' if len(prompt) > 500 else ''}", "GREEN"))
+            print(colorize(f"\n[LLM] Response from {self.name}:", "CYAN"))
+            print(colorize(f"  {response[:1000]}{'...' if len(response) > 1000 else ''}", "GREEN"))
+            print()

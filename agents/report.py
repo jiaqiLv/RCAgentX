@@ -399,6 +399,7 @@ class ReportAgent(BaseAgent):
 
         try:
             response = self.llm.invoke(prompt)
+            self.log_llm(prompt, response.content)
             return response.content
         except Exception:
             return report['summary']
