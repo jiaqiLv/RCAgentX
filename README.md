@@ -1,18 +1,16 @@
 # RCAgentX - AIOps Multi-Agent System
 
-An intelligent operations (AIOps) multi-agent system built on LangChain and LangGraph.
-This system provides automated incident detection, root cause analysis, remediation decision-making,
-and repair execution with human-in-the-loop support.
+基于 LangChain 和 LangGraph 的智能运维多 Agent 系统，提供自动化事件检测、根因分析、修复决策和执行的完整闭环。
 
-## ✨ Features
+## ✨ 核心特性
 
-- **Multi-Agent Orchestration** - 7 specialized agents coordinated by a Supervisor
-- **Training-Free GRPO** - Experience-based strategy optimization via RAG retrieval
-- **Human-in-the-Loop** - Dual-mode execution (automatic or manual approval)
-- **LLM Integration** - Support for OpenAI, DeepSeek, and other OpenAI-compatible APIs
-- **Interactive CLI** - Built-in chat application for natural language interaction
+- **多 Agent 编排** - 7 个专用 Agent + Supervisor 统一编排
+- **经典 RCA 算法** - 5 Whys、鱼骨图、故障树、变更分析、事件相关性
+- **无训练 GRPO** - 基于 RAG 检索的经验策略优化
+- **人机协同** - 支持自动修复与人工审批双模式
+- **LLM 集成** - 支持 OpenAI、DeepSeek 等模型
 
-## 🏗️ Architecture
+## 🏗️ 架构
 
 ```
                     ┌─────────────────┐
@@ -34,240 +32,196 @@ and repair execution with human-in-the-loop support.
             └───────────────┘            └───────────┘  └─────────┘
 ```
 
-## 📦 Project Structure
+## 📦 项目结构
 
 ```
 RCAgentX/
-├── agents/                 # Multi-agent implementations
-│   ├── base.py            # Abstract base class for all agents
-│   ├── supervisor.py      # Global orchestration and workflow routing
-│   ├── observability.py   # Multi-modal data collection
-│   ├── detection.py       # Anomaly detection and classification
-│   ├── diagnosis.py       # Root cause analysis
-│   ├── decision.py        # Remediation strategy with GRPO
-│   ├── repair.py          # Dual-mode repair execution
-│   └── report.py          # Incident report generation
-├── tools/                  # LangChain tools
-│   ├── prometheus.py      # Prometheus metrics query
-│   ├── loki.py            # Loki log query
-│   ├── alert_manager.py   # AlertManager management
-│   ├── wechat.py          # Enterprise WeChat notifications
-│   └── tavily_search.py   # Tavily AI web search
-├── workflows/              # LangGraph workflow definitions
-│   ├── incident_closure.py    # Standard incident closure flow
-│   ├── auto_repair.py         # Automatic repair workflow
-│   └── manual_approval.py     # Human approval workflow
-├── memory/                 # State and knowledge management
-│   ├── shared_state.py    # Shared state container
-│   ├── knowledge_base.py  # GRPO experience storage (ChromaDB)
-│   └── vector_store.py    # Vector storage wrapper
-├── algorithms/             # Core algorithms
-│   └── __init__.py        # Algorithm exports
-├── config/                 # Configuration
-│   ├── settings.py        # Settings management
-│   └── prompts.py         # Prompt templates
-├── utils/                  # Utilities
-│   ├── logger.py          # Logging configuration
-│   ├── errors.py          # Custom exceptions
-│   └── schema.py          # Schema utilities
-├── integrations/           # External integrations
-│   └── __init__.py        # Integration exports
-├── app.py                  # Interactive CLI chat application
-├── main.py                 # Main entry point
-├── run.sh                  # Quick start script
-├── requirements.txt        # Python dependencies
-└── .env.example            # Environment variables template
+├── agents/                 # Agent 实现
+│   ├── base.py            # 基础抽象类
+│   ├── supervisor.py      # 全局编排
+│   ├── observability.py   # 多模态数据收集
+│   ├── detection.py       # 异常检测
+│   ├── diagnosis.py       # 根因分析
+│   ├── decision.py        # 修复决策
+│   ├── repair.py          # 修复执行
+│   └── report.py          # 报告生成
+├── algorithms/rca/         # 经典 RCA 算法
+│   ├── five_whys.py       # 5 Whys 分析
+│   ├── ishikawa.py        # 鱼骨图分析
+│   ├── fault_tree.py      # 故障树分析
+│   ├── change_analysis.py # 变更分析
+│   ├── event_correlation.py# 事件相关性
+│   └── mcp_tool.py        # 统一 MCP 工具
+├── tools/                  # LangChain Tools
+├── memory/                 # 状态与知识库
+├── workflows/              # LangGraph 工作流
+├── config/                 # 配置管理
+├── main.py                 # 入口
+└── .env.example            # 环境变量模板
 ```
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### 1. Installation
+### 1. 安装
 
 ```bash
-# Clone the repository
-git clone <repository-url>
+git clone <repo-url>
 cd RCAgentX
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configuration
+### 2. 配置
 
 ```bash
-# Copy environment template
 cp .env.example .env
-
-# Edit .env with your settings
-vi .env
+# 编辑 .env 配置 LLM 和监控服务
 ```
 
-**Required settings:**
+**必要配置:**
 ```bash
-# LLM Configuration (DeepSeek example)
 OPENAI_API_KEY=sk-xxx
-OPENAI_API_BASE=https://api.deepseek.com/v1
+OPENAI_API_BASE=https://api.deepseek.com/v1  # 或 OpenAI
 LLM_MODEL=deepseek-chat
-
-# Monitoring (optional)
-PROMETHEUS_URL=http://localhost:9090
-LOKI_URL=http://localhost:3100
 ```
 
-### 3. Run
-
-**Interactive Chat:**
-```bash
-./run.sh app
-# or
-python app.py
-```
-
-**Programmatic Usage:**
-```bash
-./run.sh --test-incident --dry-run
-```
-
-## 💬 Interactive CLI
-
-The built-in chat application (`app.py`) provides natural language interaction:
+### 3. 运行
 
 ```bash
-python app.py
+# 测试事件
+python main.py --test-incident
+
+# 交互式模式
+python main.py --interactive
+
+# 显示 LLM 交互日志
+python main.py --test-incident --debug-rca
 ```
 
-**Available Commands:**
-| Command | Description |
-|---------|-------------|
-| `/help` | Show help message |
-| `/clear` | Clear conversation history |
-| `/history` | Show recent conversation |
-| `/status` | Show system status |
-| `/quit` | Exit application |
+## 🔍 RCA 算法选择
 
-**Example Questions:**
-- "What is AIOps?"
-- "How do I troubleshoot high CPU usage?"
-- "What are the best practices for alerting?"
-- "Explain root cause analysis"
+### 查看可用算法
 
-## 🔧 Configuration
+```bash
+python main.py --list-rca
+```
 
-### Environment Variables
+```
+══════════════════════════════════════════════════════════════
+  🔍 Available Root Cause Analysis Algorithms
+══════════════════════════════════════════════════════════════
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | LLM API key | - |
-| `OPENAI_API_BASE` | Custom API base URL | - |
-| `LLM_MODEL` | Model name | `deepseek-chat` |
-| `PROMETHEUS_URL` | Prometheus server URL | `http://localhost:9090` |
-| `LOKI_URL` | Loki server URL | `http://localhost:3100` |
-| `ALERTMANAGER_URL` | Alertmanager URL | `http://localhost:9093` |
-| `WECHAT_WEBHOOK_URL` | WeChat webhook URL | - |
-| `VERBOSE` | Enable verbose logging | `false` |
-| `DRY_RUN` | Dry-run mode (no actual changes) | `false` |
+  [1] 🤖 Auto Select         - 自动选择最佳方法
+  [2] ❓ 5 Whys              - 5 Why 分析法
+  [3] 🐟 Ishikawa (Fishbone) - 鱼骨图分析 (6 维度)
+  [4] 🌳 Fault Tree Analysis - 故障树分析
+  [5] 🔄 Change Analysis     - 变更分析
+  [6] 🔗 Event Correlation   - 事件相关性分析
+  [7] 🎯 Ensemble            - 运行所有方法并综合
+```
 
-### Supported LLM Providers
+### 选择特定算法
 
-| Provider | Base URL | Example Model |
-|----------|----------|---------------|
+```bash
+# 交互式选择算法
+python main.py --select-rca
+
+# 选择 5 Whys 运行
+echo "2" | python main.py --select-rca --test-incident
+
+# 选择 Ishikawa 运行
+echo "3" | python main.py --select-rca --test-incident
+```
+
+## 📊 工作流
+
+### 事件处理流程
+
+| 步骤 | Agent | LLM 交互 | 说明 |
+|------|-------|---------|------|
+| 1 | Observability | ✅ #1 | 多模态数据收集与摘要生成 |
+| 2 | Detection | ❌ | 基于阈值的异常检测 |
+| 3 | Diagnosis | ✅ #2 | 根因分析 (RCA 算法+LLM) |
+| 4 | Decision | ❌ | 修复策略生成 (GRPO 检索) |
+| 5 | Repair | ❌ | 修复执行 (自动/人工) |
+| 6 | Report | ✅ #3 | 报告生成与执行摘要 |
+
+### LLM 交互点
+
+启用 `--debug-rca` 显示所有 LLM 交互 (绿色输出):
+
+```bash
+python main.py --test-incident --debug-rca
+```
+
+输出示例:
+```
+[LLM] Prompt to observability:
+  Analyze the following observability data...
+
+[LLM] Response from observability:
+  **Summary of Observability Data**
+  1. Key Anomalies in Metrics...
+```
+
+## 🔧 配置选项
+
+### 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `OPENAI_API_KEY` | LLM API 密钥 | - |
+| `OPENAI_API_BASE` | API 基础 URL | - |
+| `LLM_MODEL` | 模型名称 | `deepseek-chat` |
+| `VERBOSE` | 详细日志 | `false` |
+| `MOCK_ENABLED` | 使用模拟数据 | `true` |
+
+### 命令行参数
+
+| 参数 | 说明 |
+|------|------|
+| `--interactive` | 交互式模式 |
+| `--test-incident` | 运行测试事件 |
+| `--debug-rca` | 显示 RCA 调试日志 |
+| `--select-rca` | 交互式选择 RCA 算法 |
+| `--list-rca` | 列出所有 RCA 算法 |
+
+## 🧠 GRPO 知识库
+
+无训练的策略优化，通过向量检索相似历史案例:
+
+```python
+from main import AIOpsSystem
+
+aiops = AIOpsSystem.from_env()
+
+# 获取知识库统计
+stats = aiops.get_knowledge_base_stats()
+
+# 检索成功策略
+strategies = aiops.knowledge_base.get_successful_strategies(
+    anomaly_type="cpu_spike", k=3
+)
+```
+
+## 📁 报告生成
+
+报告自动保存到 `./reports/` 目录:
+
+```bash
+ls -la reports/
+-rw-r--r--  1 user  staff  8789 Apr 22 16:26 inc-1776846454_20260422_162734_report.md
+```
+
+## 🔗 支持的服务商
+
+| 服务商 | Base URL | 模型 |
+|--------|----------|------|
 | DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
-| Azure OpenAI | Your Azure endpoint | `gpt-4` |
-| Local (Ollama) | `http://localhost:11434/v1` | `llama2` |
+| Azure OpenAI | 自定义端点 | `gpt-4` |
 
-## 📊 Workflow
+## 📚 文档
 
-### Incident Processing Flow
-
-1. **Observability** → Collect metrics, logs, traces
-2. **Detection** → Identify anomalies using rules + ML
-3. **Diagnosis** → Root cause analysis with causal inference
-4. **Decision** → Generate remediation plan using GRPO retrieval
-5. **Repair** → Execute repair (auto or manual approval)
-6. **Report** → Generate incident report
-
-### Human-in-the-Loop
-
-Repairs require human approval when:
-- Risk level is MEDIUM or HIGH
-- Diagnosis confidence < threshold (default: 0.8)
-- Action involves rollback or destructive operations
-
-## 🧠 GRPO Knowledge Base
-
-Training-Free GRPO (Generalized Reward-based Policy Optimization) enables
-continuous improvement through experience retrieval:
-
-```python
-from main import AIOpsSystem
-
-aiops = AIOpsSystem.from_env()
-
-# Get knowledge base stats
-stats = aiops.get_knowledge_base_stats()
-print(f"Total experiences: {stats['total_records']}")
-print(f"Success rate: {stats['success_rate']:.1%}")
-
-# Query successful strategies
-strategies = aiops.knowledge_base.get_successful_strategies(
-    anomaly_type="cpu_spike",
-    k=3
-)
-```
-
-## 📚 API Reference
-
-### AIOpsSystem
-
-```python
-from main import AIOpsSystem
-
-# Initialize
-aiops = AIOpsSystem.from_env()
-
-# Process incident
-result = aiops.process_incident(
-    alert_labels={"service": "api", "severity": "critical"},
-    entities=["api-pod-1"]
-)
-
-# Access results
-print(f"Status: {result['status']}")
-print(f"Root Cause: {result['diagnosis'].root_causes}")
-print(f"Report: {result['report']['summary']}")
-```
-
-### Agents
-
-Each agent implements a standard interface:
-
-```python
-from agents.detection import DetectionAgent
-from memory.shared_state import ObservabilityData
-
-agent = DetectionAgent(llm=llm, verbose=True)
-result = agent.execute({"observability": obs_data})
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## 🔗 Links
-
-- [GitHub Repository](https://github.com/jiaqiLv/RCAgentX)
-- [LangChain Documentation](https://python.langchain.com/)
-- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
+- [WORKFLOW.md](WORKFLOW.md) - 详细工作流程图
+- [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md) - 完整使用指南

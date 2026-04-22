@@ -20,6 +20,18 @@ from pydantic import ConfigDict
 from agents.base import BaseAgent
 from memory.shared_state import RootCauseAnalysis, IncidentStatus
 
+# Import classic RCA algorithms
+try:
+    from algorithms.rca import (
+        RCAMCPTool,
+        RCAEnsembleTool,
+        FiveWhysAnalyzer,
+        IshikawaAnalyzer,
+    )
+    RCA_AVAILABLE = True
+except ImportError:
+    RCA_AVAILABLE = False
+
 
 class DiagnosisAgent(BaseAgent):
     """
@@ -49,10 +61,24 @@ class DiagnosisAgent(BaseAgent):
     """
 
     name: str = "diagnosis"
-    description: str = "Performs root cause analysis and generates diagnostic reports"
+    description: str = "Performs root cause analysis using classic RCA algorithms and LLM reasoning"
     llm: Optional[ChatOpenAI] = None
+    rca_tool: Optional[Any] = None  # RCAMCPTool instance
+    rca_analyzers: Dict[str, Any] = {}  # Individual analyzers
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def __init__(self, **kwargs):
+        """Initialize DiagnosisAgent with RCA tools."""
+        super().__init__(**kwargs)
+
+        # Initialize classic RCA tools if LLM is available
+        if RCA_AVAILABLE and self.llm:
+            self.rca_tool = RCAMCPTool(llm=self.llm, verbose=False)
+            self.rca_analyzers = {
+                "5_whys": FiveWhysAnalyzer(llm=self.llm, max_whys=5),
+                "ishikawa": IshikawaAnalyzer(llm=self.llm),
+            }
 
     def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -99,7 +125,7 @@ class DiagnosisAgent(BaseAgent):
             return state
 
         # Perform root cause analysis
-        root_causes = self._analyze_root_causes(anomaly, obs_data)
+        root_causes = self._analyze_root_causes(anomaly, obs_data, state)
 
         # Build propagation path
         propagation_path = self._build_propagation_path(root_causes, obs_data)
@@ -131,53 +157,76 @@ class DiagnosisAgent(BaseAgent):
     def _analyze_root_causes(
         self,
         anomaly: Any,
-        obs_data: Any
+        obs_data: Any,
+        state: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
         Analyze and identify potential root causes.
 
-        Uses a combination of rule-based analysis and LLM-powered
-        reasoning to identify root causes.
+        Priority order:
+        1. Classic RCA algorithms (5 Whys, Ishikawa) with LLM
+        2. Rule-based analysis for known patterns
+        3. Fallback LLM reasoning
 
         Args:
             anomaly: Detected anomaly event
             obs_data: Observability data
+            state: Current workflow state (may contain user-selected RCA method)
 
         Returns:
-            List[Dict[str, Any]]: List of identified root causes with
-                entity, cause, confidence, and evidence fields
+            List[Dict[str, Any]]: List of identified root causes
         """
         root_causes = []
 
-        # Analyze based on anomaly type
-        anomaly_type = anomaly.type
-        evidence = anomaly.evidence
+        # Priority 1: Run classic RCA algorithms with LLM (most sophisticated)
+        if self.rca_tool and hasattr(anomaly, 'type') and anomaly.type != "no_issue":
+            self.log("Running classic RCA algorithms...")
+            rca_method = state.get("rca_method") if state else None
+            rca_results = self._run_classic_rca(anomaly, obs_data, rca_method)
+            if rca_results:
+                self.log(f"RCA algorithms identified {len(rca_results)} root cause(s)")
+                root_causes.extend(rca_results)
+
+        # Priority 2: Rule-based analysis for specific anomaly types
+        anomaly_type = anomaly.type if hasattr(anomaly, 'type') else ""
+        evidence = anomaly.evidence if hasattr(anomaly, 'evidence') else {}
+
+        rule_based_causes = []
 
         # CPU-related anomalies
         if "cpu" in anomaly_type.lower():
-            root_causes.extend(self._analyze_cpu_causes(evidence, obs_data))
+            rule_based_causes.extend(self._analyze_cpu_causes(evidence, obs_data))
 
         # Memory-related anomalies
         elif "memory" in anomaly_type.lower():
-            root_causes.extend(self._analyze_memory_causes(evidence, obs_data))
+            rule_based_causes.extend(self._analyze_memory_causes(evidence, obs_data))
 
         # Error rate anomalies
         elif "error" in anomaly_type.lower():
-            root_causes.extend(self._analyze_error_causes(evidence, obs_data))
+            rule_based_causes.extend(self._analyze_error_causes(evidence, obs_data))
 
         # Latency anomalies
         elif "latency" in anomaly_type.lower():
-            root_causes.extend(self._analyze_latency_causes(evidence, obs_data))
+            rule_based_causes.extend(self._analyze_latency_causes(evidence, obs_data))
 
         # Log pattern anomalies
         elif "log" in anomaly_type.lower():
-            root_causes.extend(self._analyze_log_pattern_causes(evidence, obs_data))
+            rule_based_causes.extend(self._analyze_log_pattern_causes(evidence, obs_data))
 
-        # Use LLM for complex cases when rule-based analysis fails
+        # Only add rule-based causes if RCA didn't find anything
+        if not root_causes and rule_based_causes:
+            self.log(f"Using rule-based analysis: {len(rule_based_causes)} cause(s)")
+            root_causes.extend(rule_based_causes)
+
+        # Priority 3: Fallback LLM analysis if no causes found
         if not root_causes and self.llm:
+            self.log("Using LLM-based analysis as fallback...")
             root_causes = self._llm_analyze(anomaly, obs_data)
 
-        return root_causes
+        # Deduplicate and merge root causes
+        merged = self._merge_root_causes(root_causes)
+        self.log(f"Final root causes after merge: {len(merged)}")
+        return merged
 
     def _analyze_cpu_causes(
         self,
@@ -390,6 +439,130 @@ class DiagnosisAgent(BaseAgent):
         except Exception as e:
             self.log(f"LLM analysis failed: {str(e)}")
             return []
+
+    def _run_classic_rca(
+        self,
+        anomaly: Any,
+        obs_data: Any,
+        rca_method: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Run classic RCA algorithms on the anomaly.
+
+        Uses 5 Whys and Ishikawa analysis to identify root causes.
+
+        Args:
+            anomaly: Detected anomaly event
+            obs_data: Observability data
+            rca_method: User-selected RCA method (None = run all)
+
+        Returns:
+            List[Dict[str, Any]]: Root causes from RCA algorithms
+        """
+        root_causes = []
+
+        if not self.rca_tool:
+            self.log("RCA tools not available, skipping classic RCA")
+            return root_causes
+
+        # Build problem description
+        anomaly_type = getattr(anomaly, 'type', 'unknown')
+        severity = getattr(anomaly, 'severity', 'unknown')
+        affected = getattr(anomaly, 'affected_entities', [])
+
+        problem = f"{anomaly_type} anomaly with {severity} severity"
+        if affected:
+            problem += f" affecting {', '.join(affected[:3])}"
+
+        # Build context from observability data
+        context = ""
+        if hasattr(obs_data, 'summary') and obs_data.summary:
+            context = obs_data.summary
+            self.log(f"Using observability summary as context: {context[:100]}...")
+
+        self.log(f"Running RCA with problem: {problem}")
+        if rca_method:
+            self.log(f"User-selected RCA method: {rca_method}")
+
+        # Run 5 Whys analysis
+        run_five_whys = rca_method in [None, "auto", "5_whys", "ensemble"]
+        run_ishikawa = rca_method in [None, "auto", "ishikawa", "ensemble"]
+
+        if run_five_whys and "5_whys" in self.rca_analyzers:
+            try:
+                self.log("Starting 5 Whys analysis...")
+                five_whys_result = self.rca_analyzers["5_whys"].analyze(
+                    problem=problem,
+                    context=context[:500] if context else None
+                )
+                self.log(f"5 Whys completed. Root cause: {five_whys_result.root_cause[:80] if five_whys_result.root_cause else 'None'}")
+
+                if five_whys_result.root_cause:
+                    root_causes.append({
+                        "entity": affected[0] if affected else "unknown",
+                        "cause": five_whys_result.root_cause,
+                        "category": five_whys_result.category,
+                        "confidence": five_whys_result.confidence,
+                        "evidence": f"5 Whys analysis: {' -> '.join(five_whys_result.why_answers[:3])}",
+                        "method": "5_whys"
+                    })
+            except Exception as e:
+                self.log(f"5 Whys analysis failed: {str(e)}")
+
+        # Run Ishikawa analysis
+        if run_ishikawa and "ishikawa" in self.rca_analyzers:
+            try:
+                self.log("Starting Ishikawa (Fishbone) analysis...")
+                symptoms = f"Type: {anomaly_type}, Severity: {severity}"
+                ishikawa_result = self.rca_analyzers["ishikawa"].analyze(
+                    problem=problem,
+                    symptoms=symptoms,
+                    affected_systems=affected[:5] if affected else None
+                )
+                if ishikawa_result.most_likely_cause:
+                    mlc = ishikawa_result.most_likely_cause
+                    self.log(f"Ishikawa completed. Most likely: {mlc.description[:60]} ({mlc.category})")
+
+                    root_causes.append({
+                        "entity": affected[0] if affected else "unknown",
+                        "cause": mlc.description,
+                        "category": mlc.category,
+                        "confidence": mlc.likelihood,
+                        "evidence": f"Ishikawa analysis: {ishikawa_result.analysis_notes}",
+                        "method": "ishikawa"
+                    })
+            except Exception as e:
+                self.log(f"Ishikawa analysis failed: {str(e)}")
+
+        self.log(f"Classic RCA identified {len(root_causes)} root cause(s)")
+        return root_causes
+
+    def _merge_root_causes(self, root_causes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Merge and deduplicate root causes from multiple sources.
+
+        Args:
+            root_causes: List of root causes from different analyses
+
+        Returns:
+            List[Dict[str, Any]]: Merged and deduplicated root causes
+        """
+        if not root_causes:
+            return []
+
+        # Group by similar causes
+        seen_causes = {}
+        for rc in root_causes:
+            cause_key = rc.get("cause", "")[:50].lower()
+            if cause_key not in seen_causes:
+                seen_causes[cause_key] = rc
+            else:
+                # Merge: keep higher confidence
+                existing = seen_causes[cause_key]
+                if rc.get("confidence", 0) > existing.get("confidence", 0):
+                    seen_causes[cause_key] = rc
+
+        return list(seen_causes.values())
 
     def _build_propagation_path(
         self,

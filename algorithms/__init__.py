@@ -1,9 +1,27 @@
-from algorithms.anomaly_detection import AnomalyDetector
-from algorithms.root_cause import RootCauseAnalyzer
-from algorithms.grpo import GRPOOptimizer
+"""
+Algorithms Module
+
+Core algorithms for AIOps incident analysis and resolution.
+"""
+
+# Classic RCA algorithms
+from algorithms.rca import (
+    FiveWhysAnalyzer,
+    IshikawaAnalyzer,
+    FaultTreeAnalyzer,
+    ChangeAnalyzer,
+    EventCorrelator,
+    RCAMCPTool,
+    RCAEnsembleTool,
+)
 
 __all__ = [
-    "AnomalyDetector",
-    "RootCauseAnalyzer",
-    "GRPOOptimizer",
+    # Classic RCA algorithms
+    "FiveWhysAnalyzer",
+    "IshikawaAnalyzer",
+    "FaultTreeAnalyzer",
+    "ChangeAnalyzer",
+    "EventCorrelator",
+    "RCAMCPTool",
+    "RCAEnsembleTool",
 ]
