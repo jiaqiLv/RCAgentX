@@ -17,12 +17,11 @@ The output of this agent serves as input for the Detection Agent.
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timedelta
 from langchain_openai import ChatOpenAI
+from langchain_core.tools import BaseTool
 from pydantic import ConfigDict, Field
 
 from agents.base import BaseAgent
 from memory.shared_state import ObservabilityData
-from tools.prometheus import PrometheusTool
-from tools.loki import LokiTool
 
 
 class ObservabilityAgent(BaseAgent):
@@ -62,8 +61,8 @@ class ObservabilityAgent(BaseAgent):
 
     name: str = "observability"
     description: str = "Collects and processes multi-modal observability data (metrics, logs, traces)"
-    prometheus_tool: Optional[PrometheusTool] = None
-    loki_tool: Optional[LokiTool] = None
+    prometheus_tool: Optional[BaseTool] = None
+    loki_tool: Optional[BaseTool] = None
     time_range_minutes: int = 30
     llm: Optional[ChatOpenAI] = None
 

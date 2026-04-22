@@ -123,6 +123,21 @@ class KnowledgeBaseSettings:
     max_retrieval_results: int = 5
 
 
+@dataclass
+class MockSettings:
+    """
+    Mock data generation configuration.
+
+    Attributes:
+        enabled (bool): Whether to use mock data instead of real connections
+        anomaly_type (Optional[str]): Type of anomaly to simulate
+        seed (Optional[int]): Random seed for reproducible data
+    """
+    enabled: bool = False
+    anomaly_type: Optional[str] = None
+    seed: Optional[int] = 42
+
+
 class Settings:
     """
     Centralized settings manager for the AIOps system.
@@ -154,7 +169,8 @@ class Settings:
         alertmanager: Optional[AlertManagerSettings] = None,
         wechat: Optional[WeChatSettings] = None,
         agent: Optional[AgentSettings] = None,
-        knowledge_base: Optional[KnowledgeBaseSettings] = None
+        knowledge_base: Optional[KnowledgeBaseSettings] = None,
+        mock: Optional[MockSettings] = None
     ):
         """
         Initialize settings with optional overrides.
@@ -167,6 +183,7 @@ class Settings:
             wechat: WeChat configuration override
             agent: Agent configuration override
             knowledge_base: Knowledge base configuration override
+            mock: Mock data configuration override
         """
         self.llm = llm or LLMSettings()
         self.prometheus = prometheus or PrometheusSettings()
@@ -175,6 +192,7 @@ class Settings:
         self.wechat = wechat or WeChatSettings()
         self.agent = agent or AgentSettings()
         self.knowledge_base = knowledge_base or KnowledgeBaseSettings()
+        self.mock = mock or MockSettings()
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -233,13 +251,22 @@ class Settings:
             dry_run=os.getenv("DRY_RUN", "false").lower() == "true",
         )
 
+        # Mock settings
+        mock_enabled = os.getenv("MOCK_ENABLED", "false").lower() == "true"
+        mock = MockSettings(
+            enabled=mock_enabled,
+            anomaly_type=os.getenv("MOCK_ANOMALY_TYPE") or None,
+            seed=int(os.getenv("MOCK_SEED", "42")) if os.getenv("MOCK_SEED") else 42,
+        )
+
         return cls(
             llm=llm,
             prometheus=prometheus,
             loki=loki,
             alertmanager=alertmanager,
             wechat=wechat,
-            agent=agent
+            agent=agent,
+            mock=mock
         )
 
     def to_dict(self) -> Dict[str, Any]:

@@ -28,6 +28,7 @@ from memory.shared_state import SharedState, RepairMode
 from memory.knowledge_base import GRPOKnowledgeBase
 from tools.prometheus import PrometheusTool
 from tools.loki import LokiTool
+from tools.mock_monitoring import MockPrometheusTool, MockLokiTool
 from config.settings import Settings
 
 
@@ -83,9 +84,14 @@ class AIOpsSystem:
             max_tokens=settings.llm.max_tokens,
         )
 
-        # Initialize tools
-        self.prometheus = PrometheusTool(url=settings.prometheus.url)
-        self.loki = LokiTool(url=settings.loki.url)
+        # Initialize tools (use mock if enabled)
+        if settings.mock.enabled:
+            print(f"[Mock Mode] Using mock monitoring data (anomaly_type={settings.mock.anomaly_type})")
+            self.prometheus = MockPrometheusTool(seed=settings.mock.seed)
+            self.loki = MockLokiTool(seed=settings.mock.seed)
+        else:
+            self.prometheus = PrometheusTool(url=settings.prometheus.url)
+            self.loki = LokiTool(url=settings.loki.url)
 
         # Initialize knowledge base
         self.knowledge_base = GRPOKnowledgeBase(
@@ -298,6 +304,32 @@ def main():
         print(f"Status: {result.get('status', 'unknown')}")
         print(f"Incident ID: {result.get('incident_id', 'unknown')}")
 
+        # Show all state keys for debugging
+        print(f"\nWorkflow state keys: {list(result.keys())}")
+
+        # Show anomaly if detected
+        if result.get("anomaly"):
+            anomaly = result["anomaly"]
+            print(f"\nAnomaly detected:")
+            print(f"  Type: {getattr(anomaly, 'type', 'unknown')}")
+            print(f"  Confidence: {getattr(anomaly, 'confidence', 0):.1%}")
+            print(f"  Severity: {getattr(anomaly, 'severity', 'unknown')}")
+
+        # Show diagnosis if available
+        if result.get("diagnosis"):
+            diagnosis = result["diagnosis"]
+            print(f"\nDiagnosis:")
+            print(f"  Root causes: {getattr(diagnosis, 'root_causes', [])}")
+
+        # Show decision if available
+        if result.get("decision"):
+            decision = result["decision"]
+            print(f"\nDecision:")
+            print(f"  Risk level: {getattr(decision, 'risk_level', 'unknown')}")
+            print(f"  Actions: {getattr(decision, 'actions', [])}")
+            print(f"  Requires approval: {getattr(decision, 'requires_approval', False)}")
+
+        # Show report if available
         if result.get("report"):
             print(f"\nSummary: {result['report'].get('summary', 'N/A')}")
 
